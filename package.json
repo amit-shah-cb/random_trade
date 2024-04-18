@@ -1,0 +1,14 @@
+{
+  "name": "hardhat-project",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "hardhat": "^2.22.3"
+  },
+  "dependencies": {
+    "@airstack/airstack-react": "^0.6.3",
+    "@airstack/node": "^0.0.6",
+    "@typechain/ethers-v6": "^0.5.1",
+    "axios": "^1.6.8",
+    "dotenv": "^16.4.5"
+  }
+}
