@@ -186,15 +186,19 @@ describe("RandomTrade", function () {
       expect(infApproveReceipt?.status).to.equal(1);
      
       let trades:any = [];
-      
+
       for(let i = 0; i < tt.TrendingTokens.TrendingToken.length; i++) {
         const token = tt.TrendingTokens.TrendingToken[i];
         const address = token.address;
         const slippage = 1000;
-        const {data} = await axios.get(`https://api.wallet.coinbase.com/rpc/v3/swap/trade?fromAddress=${wallet.address}&from=0x833589fcd6edb6e08f4c7c32d4f71b54bda02913&to=${address}&amount=1000000&amountReference=from&chainId=8453&slippagePercentage=${slippage}`)
+        const {data} = await axios.get(`https://api.wallet.coinbase.com/rpc/v3/swap/trade?fromAddress=${await randomTrade.getAddress()}&from=0x833589fcd6edb6e08f4c7c32d4f71b54bda02913&to=${address}&amount=1000000&amountReference=from&chainId=8453&slippagePercentage=${slippage}`)
         const trade = data as Root;
         const outputToken = IERC20__factory.connect(token.address, wallet.provider)     
-        console.log(token.token.name,`:`, await outputToken.balanceOf(wallet.address));
+        const outputTokenBalance = await outputToken.balanceOf(wallet.address);
+        console.log(token.token.name,`:`,outputTokenBalance);
+        if(outputTokenBalance > 0) {
+          continue;
+        }
         trades.push({
           to:trade.result.tx.to,
           data:trade.result.tx.data,
