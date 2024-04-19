@@ -9,6 +9,7 @@ import axios from "axios";
 import { getTrendingTokens } from "./utils/airstack";
 import { IERC20__factory } from "../typechain-types";
 import { Result, Root } from "./utils/models";
+import { RandomTrade__factory } from "../typechain-types/factories/RandomTrade.sol";
 
 const getTrendingTokensMock = async ():Promise<any> => {
 return JSON.parse(`{
@@ -187,7 +188,7 @@ describe("RandomTrade", function () {
       
       const rtAddress = await randomTrade.getAddress();
       const urls = await Promise.all(tt.TrendingTokens.TrendingToken.map(async (token:any) => {
-        const slippage=700;
+        const slippage=990;
         return `https://api.wallet.coinbase.com/rpc/v3/swap/trade?fromAddress=${rtAddress}&from=0x833589fcd6edb6e08f4c7c32d4f71b54bda02913&to=${token.address}&amount=1000000&amountReference=from&chainId=8453&slippagePercentage=${slippage}`
       }))
       console.log(urls);
@@ -210,7 +211,14 @@ describe("RandomTrade", function () {
       const tradeResult = await connectedRT.executeRandomTrade(ethers.hexlify(entropy), trades);
       const receipt = await tradeResult.wait();
       expect(receipt?.status).to.equal(1);
-
+      const abiDecoder = ethers.AbiCoder.defaultAbiCoder();
+      const log = receipt?.logs.filter((l:any)=>l.topics[0] === randomTrade.interface.getEvent("ExecutedTrade").topicHash);
+      const logData = log ? log[0].data: "0x";      
+      const [tokenOutput, tokenOutputAmount] = abiDecoder.decode(randomTrade.interface.getEvent("ExecutedTrade").inputs, logData);
+      console.log(tokenOutput,tokenOutputAmount);
+      // expect(trades.map((t:any)=>t.outputToken)).to.contains(tokenOutput);
+      // expect(tokenOutputAmount).to.be.gt(0);
+      console.log(await (IERC20__factory.connect(tokenOutput, wallet)).balanceOf(wallet.address));//.to.be.gte(tokenOutputAmount);
       
     }).timeout(1200000);
     

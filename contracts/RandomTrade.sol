@@ -13,7 +13,6 @@ struct Trade{
 }
 
 contract RandomTrade {
-    uint public unlockTime;
     address payable public owner;
     address internal usdc;
 
