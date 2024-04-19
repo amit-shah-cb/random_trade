@@ -70,7 +70,7 @@ describe("RandomTrade", function () {
     const wallet = new ethers.Wallet(process.env.PK as string, hre.ethers.provider);
 
     const RT = await hre.ethers.getContractFactory("RandomTrade");
-    const randomTrade = await RT.deploy();
+    const randomTrade = await RT.deploy(`0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`,[`0xdef1c0ded9bec7f1a1670819833240f027b25eff`]);
 
     return { randomTrade, owner, otherAccount, wallet };
   }
@@ -79,6 +79,7 @@ describe("RandomTrade", function () {
     it("can deploy randomTrade endpoint", async function () {
       const { randomTrade, owner, otherAccount , wallet} = await loadFixture(deployFixture);
       expect(wallet.address).to.equal(`0x4C64C7dC4fc7ba5B89fAd3AEbC68892bFC1B67d5`)
+      
       expect(await randomTrade).to.not.be.null;
     });
 
@@ -106,6 +107,44 @@ describe("RandomTrade", function () {
         const outputToken = IERC20__factory.connect(token.address, wallet.provider)     
         console.log(token.token.name,`:`, await outputToken.balanceOf(wallet.address));
       }
+    }).timeout(1200000);
+
+    it("random token swap", async function () {
+      const { randomTrade, owner, otherAccount , wallet} = await loadFixture(deployFixture);
+      const tt = await getTrendingTokens();
+      const usdc = IERC20__factory.connect(`0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`, wallet);
+      console.log(await usdc.balanceOf(wallet.address));
+      const infApproveTx = await usdc.approve(await randomTrade.getAddress(), ethers.MaxInt256);
+      const infApproveReceipt = await infApproveTx.wait();
+      expect(infApproveReceipt?.status).to.equal(1);
+     
+      let trades:any = [];
+
+      for(let i = 0; i < tt.TrendingTokens.TrendingToken.length; i++) {
+        const token = tt.TrendingTokens.TrendingToken[i];
+        const address = token.address;
+        const slippage = 500;
+        const {data} = await axios.get(`https://api.wallet.coinbase.com/rpc/v3/swap/trade?fromAddress=${wallet.address}&from=0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913&to=${address}&amount=1000000&amountReference=from&chainId=8453&slippagePercentage=${slippage}`)
+        const trade = data as Root;
+        const outputToken = IERC20__factory.connect(token.address, wallet.provider)     
+        console.log(token.token.name,`:`, await outputToken.balanceOf(wallet.address));
+        trades.push({
+          to:trade.result.tx.to,
+          data:trade.result.tx.data,
+          outputToken:trade.result.quote.toAsset.address,
+          amount:1_000_000
+        });
+      }
+      console.log("trades:",trades);
+
+      const connectedRT = randomTrade.connect(wallet);
+      const entropy = ethers.randomBytes(32);
+      const tradeResult = await connectedRT.executeRandomTrade(ethers.hexlify(entropy), trades);
+      const receipt = await tradeResult.wait();
+      console.log(`Trade:`,receipt?.status);
+
+      //TODO: decode log to get balance
+      
     }).timeout(1200000);
     
   });

@@ -9,14 +9,14 @@ library Shuffle {
     
   
 
-    function shuffle(uint8 size) internal view returns(uint8){
+    function shuffle(uint256 random, uint8 size) internal pure returns(uint8){
         uint8[] memory arr = new uint8[](size);
         for (uint8 i = 0; i < size; i++) {
                 arr[i]=i;
         }
        
         for (uint256 i = 0; i < size; i++) {
-            uint256 j = uint256(keccak256(abi.encode(block.prevrandao, i))) % size;
+            uint256 j = uint256(keccak256(abi.encode(random, i))) % size;
             uint8 tmp = arr[i];
             arr[i] = arr[j];
             arr[j] = tmp;
