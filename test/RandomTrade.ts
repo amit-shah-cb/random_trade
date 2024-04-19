@@ -208,7 +208,7 @@ describe("RandomTrade", function () {
       console.log("trades:",trades);
       const connectedRT = randomTrade.connect(wallet);
       const entropy = ethers.randomBytes(32);
-      const tradeResult = await connectedRT.executeRandomTrade(ethers.hexlify(entropy), trades);
+      const tradeResult = await connectedRT.executeRandomTrade(ethers.hexlify(entropy), trades, {gasLimit:1_200_000});
       const receipt = await tradeResult.wait();
       expect(receipt?.status).to.equal(1);
       const abiDecoder = ethers.AbiCoder.defaultAbiCoder();
@@ -216,6 +216,7 @@ describe("RandomTrade", function () {
       const logData = log ? log[0].data: "0x";      
       const [tokenOutput, tokenOutputAmount] = abiDecoder.decode(randomTrade.interface.getEvent("ExecutedTrade").inputs, logData);
       console.log(tokenOutput,tokenOutputAmount);
+      console.log("gasUsed:",receipt?.gasUsed);
       // expect(trades.map((t:any)=>t.outputToken)).to.contains(tokenOutput);
       // expect(tokenOutputAmount).to.be.gt(0);
       console.log(await (IERC20__factory.connect(tokenOutput, wallet)).balanceOf(wallet.address));//.to.be.gte(tokenOutputAmount);
