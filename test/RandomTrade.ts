@@ -9,6 +9,7 @@ import axios from "axios";
 import { getTrendingTokens } from "./utils/airstack";
 import { IERC20__factory } from "../typechain-types";
 import { Result, Root } from "./utils/models";
+import { RandomTrade__factory } from "../typechain-types/factories/RandomTrade.sol";
 
 const getTrendingTokensMock = async ():Promise<any> => {
 return JSON.parse(`{
@@ -184,36 +185,41 @@ describe("RandomTrade", function () {
       const infApproveTx = await usdc.approve(await randomTrade.getAddress(), ethers.MaxInt256);
       const infApproveReceipt = await infApproveTx.wait();
       expect(infApproveReceipt?.status).to.equal(1);
-     
-      let trades:any = [];
-
-      for(let i = 0; i < tt.TrendingTokens.TrendingToken.length; i++) {
-        const token = tt.TrendingTokens.TrendingToken[i];
-        const address = token.address;
-        const slippage = 1000;
-        const {data} = await axios.get(`https://api.wallet.coinbase.com/rpc/v3/swap/trade?fromAddress=${await randomTrade.getAddress()}&from=0x833589fcd6edb6e08f4c7c32d4f71b54bda02913&to=${address}&amount=1000000&amountReference=from&chainId=8453&slippagePercentage=${slippage}`)
-        const trade = data as Root;
-        const outputToken = IERC20__factory.connect(token.address, wallet.provider)     
-        const outputTokenBalance = await outputToken.balanceOf(wallet.address);
-        console.log(token.token.name,`:`,outputTokenBalance);
-        if(outputTokenBalance > 0) {
-          continue;
-        }
-        trades.push({
+      
+      const rtAddress = await randomTrade.getAddress();
+      const urls = await Promise.all(tt.TrendingTokens.TrendingToken.map(async (token:any) => {
+        const slippage=990;
+        return `https://api.wallet.coinbase.com/rpc/v3/swap/trade?fromAddress=${rtAddress}&from=0x833589fcd6edb6e08f4c7c32d4f71b54bda02913&to=${token.address}&amount=1000000&amountReference=from&chainId=8453&slippagePercentage=${slippage}`
+      }))
+      console.log(urls);
+      const reqs = await Promise.all(urls.map(async (url:any) => {
+        return await axios.get(url);
+      }));
+      const trades = reqs.map((req:any) => {
+        const trade = req.data as Root;
+        return {
           to:trade.result.tx.to,
           data:trade.result.tx.data,
           outputToken:trade.result.quote.toAsset.address,
           amount:1_000_000
-        });
-      }
+        }
+      });
+      
       console.log("trades:",trades);
-
       const connectedRT = randomTrade.connect(wallet);
       const entropy = ethers.randomBytes(32);
-      const tradeResult = await connectedRT.executeRandomTrade(ethers.hexlify(entropy), trades);
+      const tradeResult = await connectedRT.executeRandomTrade(ethers.hexlify(entropy), trades, {gasLimit:1_200_000});
       const receipt = await tradeResult.wait();
       expect(receipt?.status).to.equal(1);
-
+      const abiDecoder = ethers.AbiCoder.defaultAbiCoder();
+      const log = receipt?.logs.filter((l:any)=>l.topics[0] === randomTrade.interface.getEvent("ExecutedTrade").topicHash);
+      const logData = log ? log[0].data: "0x";      
+      const [tokenOutput, tokenOutputAmount] = abiDecoder.decode(randomTrade.interface.getEvent("ExecutedTrade").inputs, logData);
+      console.log(tokenOutput,tokenOutputAmount);
+      console.log("gasUsed:",receipt?.gasUsed);
+      // expect(trades.map((t:any)=>t.outputToken)).to.contains(tokenOutput);
+      // expect(tokenOutputAmount).to.be.gt(0);
+      console.log(await (IERC20__factory.connect(tokenOutput, wallet)).balanceOf(wallet.address));//.to.be.gte(tokenOutputAmount);
       
     }).timeout(1200000);
     

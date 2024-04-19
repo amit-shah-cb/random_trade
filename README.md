@@ -19,6 +19,11 @@ npx hardhat test
 npx hardhat test --grep "random token swap"
 
 npx hardhat ignition deploy ./ignition/modules/Lock.ts
+
+#deploy to base 
+
+npx hardhat ignition deploy ./ignition/modules/RandomeTrade.ts --network base
+
 ```
 
 Extension

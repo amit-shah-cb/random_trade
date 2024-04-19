@@ -2,7 +2,7 @@
 pragma solidity ^0.8.24;
 
 // Uncomment this line to use console.log
-import "hardhat/console.sol";
+// import "hardhat/console.sol";
 import "./libraries/Shuffle.sol";
 
 struct Trade{
@@ -13,7 +13,6 @@ struct Trade{
 }
 
 contract RandomTrade {
-    uint public unlockTime;
     address payable public owner;
     address internal usdc;
 
